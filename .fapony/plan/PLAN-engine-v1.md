@@ -1,7 +1,7 @@
 # PLAN-engine-v1.md — falsify engine v1 (CSV-in, deterministic stat-ensemble CLI)
 
 > **Status:** 🚧 in-progress · **Owner:** delamind · **Created:** 2026-09-06
-> **Source spec:** [engine-v1.md](../spec/engine-v1.md)
+> **Source spec:** [SPEC-engine-v1.md](../spec/SPEC-engine-v1.md)
 
 ---
 
@@ -46,7 +46,7 @@ core: no login, no network call, no vendor lock to any platform.
 - Each of the 3 checks has a unit test against a synthetic dataset with a
   known expected verdict (not just "runs without crashing")
 - `falsify check --json` output validates against the schema in
-  [engine-v1.md](../spec/engine-v1.md)
+  [SPEC-engine-v1.md](../spec/SPEC-engine-v1.md)
 - Omitting `--params` exits non-zero with a usage error, never a silent default
 
 ## 4. Constraints / Hard rules (must not violate)
@@ -101,11 +101,11 @@ falsify check examples/known_good.csv --params 2        # → verdict: pass
 ```
 
 Full CSV schema, JSON output shape, and edge-case table: see
-[engine-v1.md](../spec/engine-v1.md).
+[SPEC-engine-v1.md](../spec/SPEC-engine-v1.md).
 
 ## 8. References
 
-- [SPEC-engine-v1.md](../spec/engine-v1.md) — schema, formulas, edge cases
+- [SPEC-engine-v1.md](../spec/SPEC-engine-v1.md) — schema, formulas, edge cases
 - Bailey, D. & López de Prado, M. (2014), "The Deflated Sharpe Ratio" —
   source for the `deflated_sharpe` check
 - Positioning note (not a spec, just context for future chunks): this engine
