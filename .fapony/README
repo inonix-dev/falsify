@@ -1,9 +1,0 @@
-# .fapony/ — fapony project dir (plans, specs, memory)
-# Plans live in .fapony/plan/, specs in .fapony/spec/, memory in .fapony/.memory/.
-# state.db is NOT here by design — it lives in ~/.config/fapony/ where agents
-# running in this worktree cannot rewrite run state / audit trail.
-#
-# Usage:
-#   fapony init <path>         — scaffold (this directory is created here)
-#   fapony kickoff <key>       — auto-detect pending plan and run
-#   fapony run <key> --plan X  — explicit plan path
