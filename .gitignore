@@ -10,6 +10,9 @@ dist/
 *-TEMP.md
 wt-*/
 
+.fapony/
+fapony.config.json
+
 # Added by code-review-graph
 .code-review-graph/
 .vscode/
