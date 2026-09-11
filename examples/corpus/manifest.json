@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "engine": "v1 (sample_size, deflated_sharpe, param_overfit_ratio)",
+  "gates": {
+    "must_not_pass": "bad strategy — overall verdict warn or fail counts as CAUGHT, pass is a FALSE NEGATIVE (CI fails)",
+    "must_pass": "good strategy — overall verdict must be pass, anything else is a FALSE POSITIVE (CI fails)",
+    "documented_gap": "known v1 blind spot — engine is EXPECTED to pass a bad strategy here; tracked, not gated"
+  },
+  "cases": [
+    {
+      "file": "bad_small_sample_lucky.csv",
+      "params": 1,
+      "trials": 1,
+      "label": "bad",
+      "gate": "must_not_pass",
+      "expected": "fail",
+      "catches_via": "sample_size (n=14 below the 30-trade floor, despite 79% win rate)",
+      "rationale": "Lucky 14-trade streak. High win rate + high Sharpe, only the sample floor catches it."
+    },
+    {
+      "file": "../known_overfit.csv",
+      "params": 12,
+      "trials": 1,
+      "label": "bad",
+      "gate": "must_not_pass",
+      "expected": "fail",
+      "catches_via": "param_overfit_ratio (42 trades / 12 params = 3.5)",
+      "rationale": "Trust anchor: textbook curve-fit. DSR alone only warns (SR=0.18) — the ratio check does the work."
+    },
+    {
+      "file": "bad_random_walk.csv",
+      "params": 2,
+      "trials": 1,
+      "label": "bad",
+      "gate": "must_not_pass",
+      "expected": "fail",
+      "catches_via": "deflated_sharpe (SR~0 on 200 noise trades)",
+      "rationale": "Pure noise, zero edge. Note: two-sided sample_size PASSES here (42% win rate is 'significantly' off 50%) — DSR is the backstop. Proves no single check can be trusted alone."
+    },
+    {
+      "file": "bad_hidden_trials.csv",
+      "params": 2,
+      "trials": 200,
+      "label": "bad",
+      "gate": "must_not_pass",
+      "expected": "fail",
+      "catches_via": "deflated_sharpe after 200-trial deflation (same CSV passes with --trials 1)",
+      "rationale": "Grid-searched winner: SR~0.33 looks real until deflated by the honest trial count. Same file with --trials 1 PASSES — that delta is why the CLI nags when --trials is left at default."
+    },
+    {
+      "file": "bad_martingale_fat_tail.csv",
+      "params": 2,
+      "trials": 1,
+      "label": "bad",
+      "gate": "must_not_pass",
+      "expected": "fail",
+      "catches_via": "deflated_sharpe (negative SR despite 85% win rate)",
+      "rationale": "Martingale/pick-up-pennies: 85% wins PASSES sample_size. Anyone screening on win rate ships this and blows up. DSR must catch it."
+    },
+    {
+      "file": "bad_single_outlier.csv",
+      "params": 3,
+      "trials": 1,
+      "label": "bad",
+      "gate": "must_not_pass",
+      "expected": "warn",
+      "catches_via": "deflated_sharpe warn + param_overfit_ratio warn (no single fail, worst-of still not pass)",
+      "rationale": "Lottery ticket: one +3000 outlier funds 59 losers. Nothing FAILS outright — the corpus asserts the engine at least refuses to PASS it."
+    },
+    {
+      "file": "bad_cherry_picked_regime.csv",
+      "params": 2,
+      "trials": 1,
+      "label": "bad",
+      "gate": "documented_gap",
+      "expected": "pass",
+      "known_limitation": true,
+      "catches_via": null,
+      "rationale": "In-regime backtest (trend-month only) that dies out-of-sample. A CSV carries no held-out info, so v1 CANNOT see it — engine passes, and that FN is recorded here on purpose. Fix needs train/held-out split (cloud scope, roadmap non-goal for engine). If a future check ever catches this, update the manifest."
+    },
+    {
+      "file": "../known_good.csv",
+      "params": 2,
+      "trials": 1,
+      "label": "good",
+      "gate": "must_pass",
+      "expected": "pass",
+      "rationale": "Trust anchor: 200 trades, 62% wins, SR~0.73. Must stay pass — regression tripwire against over-strict future checks."
+    },
+    {
+      "file": "good_moderate_edge.csv",
+      "params": 3,
+      "trials": 1,
+      "label": "good",
+      "gate": "must_pass",
+      "expected": "pass",
+      "rationale": "Moderate real edge (60% wins, SR~0.27, 120 trades). Guards the pass-side boundary: tightening thresholds must not start flagging ordinary good backtests."
+    },
+    {
+      "file": "good_minimal_clean.csv",
+      "params": 2,
+      "trials": 1,
+      "label": "good",
+      "gate": "must_pass",
+      "expected": "pass",
+      "rationale": "Smallest good case kept (100 trades, 65% wins, SR~0.48). Anything smaller belongs in warn/fail territory."
+    }
+  ]
+}
