@@ -1,0 +1,53 @@
+name: False negative / false positive
+description: falsify passed a bad backtest, or failed a sound one
+labels: ["correctness"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The most valuable report in this project. The engine's contract is the
+        corpus scoreboard in `examples/corpus/` — a case it gets wrong belongs
+        there.
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Which way is it wrong?
+      options:
+        - False negative — a bad backtest passed
+        - False positive — a sound backtest failed
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and output
+      description: The full `falsify check ...` command and the `--json` output.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: ground_truth
+    attributes:
+      label: Why is the verdict wrong?
+      description: >
+        How do you know the ground truth? (e.g. "strategy was fitted on this
+        exact window", "it's been live for 2 years at the same win rate",
+        "trades are synthetic with a known edge").
+    validations:
+      required: true
+  - type: textarea
+    id: csv
+    attributes:
+      label: Trade data
+      description: >
+        Attach the CSV, or paste enough rows to reproduce. Synthetic data that
+        reproduces the problem is fine — and preferred if the real data is
+        yours to keep.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: falsify --version
+    validations:
+      required: true

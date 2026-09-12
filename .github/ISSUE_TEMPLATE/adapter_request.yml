@@ -1,0 +1,31 @@
+name: Import adapter request
+description: Support a new --from source (broker or platform export)
+labels: ["adapter"]
+body:
+  - type: input
+    id: source
+    attributes:
+      label: Platform or broker
+      placeholder: "MetaTrader 5, NinjaTrader, Interactive Brokers..."
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample export
+      description: >
+        Header row plus a few data rows, with anything private scrubbed. An
+        adapter cannot be written without a real sample.
+      render: csv
+    validations:
+      required: true
+  - type: textarea
+    id: mapping
+    attributes:
+      label: Column mapping
+      description: >
+        Which columns are entry time, exit time, pnl, side? Is one trade one
+        row, or paired entry/exit rows? Any quirks (timezone, locale decimals,
+        currency symbols)?
+    validations:
+      required: true
