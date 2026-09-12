@@ -29,6 +29,7 @@ class CheckResult:
     value: float | str
     threshold: float
     explanation: str
+    inputs: dict | None = None
 
 
 def sample_size(n_trades: int, n_wins: int) -> CheckResult:
@@ -46,6 +47,7 @@ def sample_size(n_trades: int, n_wins: int) -> CheckResult:
             value=n_trades,
             threshold=30,
             explanation=f"n={n_trades} trades — insufficient data for any statistical test",
+            inputs={"n_trades": n_trades, "n_wins": n_wins},
         )
 
     if n_trades < 30:
@@ -55,6 +57,7 @@ def sample_size(n_trades: int, n_wins: int) -> CheckResult:
             value=n_trades,
             threshold=30,
             explanation=f"n={n_trades} trades — below the 30-trade hard floor",
+            inputs={"n_trades": n_trades, "n_wins": n_wins},
         )
 
     win_rate = n_wins / n_trades
@@ -78,6 +81,7 @@ def sample_size(n_trades: int, n_wins: int) -> CheckResult:
             f"{'not distinguishable from chance' if p_value > 0.05 else 'statistically distinguishable from chance'} "
             f"at p={p_value:.2f}"
         ),
+        inputs={"n_trades": n_trades, "n_wins": n_wins},
     )
 
 
@@ -109,6 +113,7 @@ def deflated_sharpe(
             value="insufficient_data",
             threshold=0.95,
             explanation=f"n={n_trades} trades — insufficient data to compute a meaningful Sharpe ratio",
+            inputs={"sharpe": sharpe_observed, "n_trades": n_trades, "n_trials": n_trials, "skew": skew, "kurtosis": kurtosis},
         )
 
     n = n_trades
@@ -156,6 +161,7 @@ def deflated_sharpe(
         value=round(dsr, 4),
         threshold=0.95,
         explanation=explanation,
+        inputs={"sharpe": sharpe_observed, "n_trades": n_trades, "n_trials": n_trials, "skew": skew, "kurtosis": kurtosis},
     )
 
 
@@ -183,6 +189,7 @@ def param_overfit_ratio(n_trades: int, n_params: int) -> CheckResult:
         threshold=10,
         explanation=f"{ratio:.2f} trades per parameter ({n_params} params, {n_trades} trades)"
         + (" — below the 10:1 floor" if ratio < 10 else ""),
+        inputs={"n_trades": n_trades, "n_params": n_params},
     )
 
 

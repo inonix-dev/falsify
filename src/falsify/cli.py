@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
 
+from falsify import __version__
 from falsify.checks import (
     CheckResult,
     Verdict,
@@ -21,14 +25,39 @@ from falsify.checks import (
 from falsify.io import load_trades
 
 
+@dataclass
+class RunResult:
+    results: list[CheckResult]
+    sharpe: float
+    skew: float
+    kurtosis: float
+
+
+def _json_safe(value):
+    """Coerce non-finite floats to None so the record stays strict JSON.
+
+    pandas skew/kurtosis return NaN on degenerate inputs (e.g. n<3);
+    json.dumps would emit bare NaN/Infinity, which RFC 8259 rejects and
+    strict consumers (jq, the cloud layer) refuse to parse.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    return value
+
+
 def _result_to_dict(r: CheckResult) -> dict:
-    return {
+    d = {
         "name": r.name,
         "verdict": r.verdict.value,
-        "value": r.value,
+        "value": _json_safe(r.value),
         "threshold": r.threshold,
         "explanation": r.explanation,
     }
+    if r.inputs is not None:
+        d["inputs"] = _json_safe(r.inputs)
+    return d
 
 
 def _compute_sharpe(trades: pd.DataFrame) -> float:
@@ -60,10 +89,13 @@ def run_checks(
     trades: pd.DataFrame,
     n_params: int,
     n_trials: int,
-) -> list[CheckResult]:
-    """Run all three checks and return results."""
+) -> RunResult:
+    """Run all three checks and return results with computed stats."""
     n_trades = len(trades)
     n_wins = int((trades["pnl"] > 0).sum())
+
+    skew, kurt = _compute_skew_kurtosis(trades)
+    sharpe = _compute_sharpe(trades)
 
     results: list[CheckResult] = []
 
@@ -71,14 +103,12 @@ def run_checks(
     results.append(sample_size(n_trades, n_wins))
 
     # 2. Deflated Sharpe
-    skew, kurt = _compute_skew_kurtosis(trades)
-    sharpe = _compute_sharpe(trades)
     results.append(deflated_sharpe(sharpe, n_trades, n_trials, skew, kurt))
 
     # 3. Param overfit ratio
     results.append(param_overfit_ratio(n_trades, n_params))
 
-    return results
+    return RunResult(results=results, sharpe=sharpe, skew=skew, kurtosis=kurt)
 
 
 def _build_overall_explanation(
@@ -124,10 +154,24 @@ def _print_human_report(
         )
 
 
+def _sha256_file(path: str) -> str:
+    """Compute SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="falsify",
         description="Deterministic overfitting checks for backtest trade CSVs.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -169,21 +213,34 @@ def main() -> None:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
 
-    results = run_checks(trades, args.params, args.trials)
+    run_result = run_checks(trades, args.params, args.trials)
 
     if args.json:
+        file_hash = _sha256_file(args.csv_path)
         output = {
-            "n_trades": len(trades),
-            "verdict": worst_verdict(results).value,
-            "checks": [_result_to_dict(r) for r in results],
+            "schema_version": 1,
+            "engine_version": __version__,
+            "input": {
+                "path": args.csv_path,
+                "sha256": file_hash,
+                "n_trades": len(trades),
+            },
+            "declared": {
+                "params": args.params,
+                "trials": args.trials,
+                "trials_was_default": trials_was_default,
+            },
+            "verdict": worst_verdict(run_result.results).value,
+            "checks": [_result_to_dict(r) for r in run_result.results],
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
-        print(json.dumps(output, indent=2))
+        print(json.dumps(output, indent=2 if sys.stdout.isatty() else None))
     else:
         _print_human_report(
-            results, len(trades), args.params, args.trials, trials_was_default
+            run_result.results, len(trades), args.params, args.trials, trials_was_default
         )
 
-    raise SystemExit(0 if worst_verdict(results) == Verdict.pass_ else 1)
+    raise SystemExit(0 if worst_verdict(run_result.results) == Verdict.pass_ else 1)
 
 
 if __name__ == "__main__":
