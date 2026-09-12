@@ -50,7 +50,8 @@ def _run(case: dict) -> str:
         f"{case['file']}: {len(trades)} rows, expected "
         f"{EXPECTED_ROWS[case['file']]} — regenerate via generate.py?"
     )
-    return worst_verdict(run_checks(trades, case["params"], case["trials"])).value
+    run_result = run_checks(trades, case["params"], case["trials"])
+    return worst_verdict(run_result.results).value
 
 
 @pytest.mark.parametrize("case", CASES, ids=CASE_IDS)
@@ -119,9 +120,58 @@ def test_hidden_trials_dishonesty_delta():
     case = next(c for c in CASES if c["file"] == "bad_hidden_trials.csv")
     path = (CORPUS_DIR / case["file"]).resolve()
     trades = load_trades(path)
-    default = worst_verdict(run_checks(trades, case["params"], 1)).value
-    honest = worst_verdict(run_checks(trades, case["params"], 200)).value
+    default = worst_verdict(run_checks(trades, case["params"], 1).results).value
+    honest = worst_verdict(run_checks(trades, case["params"], 200).results).value
     assert (default, honest) == ("pass", "fail"), (
         f"trial-delta broke: --trials 1 → {default}, --trials 200 → {honest} "
         "(expected pass/fail — update manifest + this test if intended)"
     )
+
+
+def test_determinism():
+    """Same input → identical JSON (except created_at).
+
+    The cloud layer depends on this property: two runs of the same file
+    must produce byte-identical records so results can be deduplicated.
+    """
+    import subprocess
+    import sys
+
+    csv = str((CORPUS_DIR / "../known_good.csv").resolve())
+    cmd = [sys.executable, "-m", "falsify.cli", "check", csv, "--params", "2", "--json"]
+
+    obj1 = json.loads(subprocess.check_output(cmd))
+    obj2 = json.loads(subprocess.check_output(cmd))
+
+    obj1.pop("created_at")
+    obj2.pop("created_at")
+
+    assert obj1 == obj2, "Non-deterministic JSON output"
+
+
+def test_small_input_record_is_strict_json(tmp_path):
+    """Degenerate inputs (n=2) must still emit strict JSON.
+
+    pandas skew/kurtosis are NaN for tiny samples; the record must carry
+    null instead — bare NaN is rejected by RFC 8259 parsers (jq, cloud).
+    """
+    import subprocess
+    import sys
+
+    csv = tmp_path / "tiny.csv"
+    csv.write_text(
+        "entry_time,exit_time,pnl,side\n"
+        "2026-01-03T09:00:00Z,2026-01-03T14:00:00Z,100.0,long\n"
+        "2026-01-04T09:00:00Z,2026-01-04T14:00:00Z,-50.0,short\n"
+    )
+    cmd = [sys.executable, "-m", "falsify.cli", "check", str(csv), "--params", "1", "--json"]
+    proc = subprocess.run(cmd, capture_output=True, check=False)
+    assert proc.returncode == 1  # fail verdict — record is still emitted
+
+    def _strict(const):
+        raise ValueError(f"non-strict JSON constant: {const}")
+
+    record = json.loads(proc.stdout.decode(), parse_constant=_strict)
+    assert record["verdict"] == "fail"
+    dsr_inputs = next(c["inputs"] for c in record["checks"] if c["name"] == "deflated_sharpe")
+    assert dsr_inputs["skew"] is None and dsr_inputs["kurtosis"] is None
