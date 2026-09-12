@@ -138,11 +138,15 @@ def _print_human_report(
     trials_was_default: bool,
     passthrough: dict[str, str | None] | None = None,
     date_range: dict[str, str] | None = None,
+    strategy: str | None = None,
 ) -> None:
     overall = worst_verdict(results)
     overall_label = overall.value.upper()
     print(f"\n  FALSIFY CHECK — {overall_label}")
     print(f"  trades={n_trades}  params={n_params}  trials={n_trials}")
+
+    if strategy is not None:
+        print(f"  strategy={strategy}")
 
     if passthrough and any(passthrough.values()):
         parts = []
@@ -222,6 +226,12 @@ def main() -> None:
         action="store_true",
         help="Output machine-readable JSON instead of the human report",
     )
+    check.add_argument(
+        "--strategy",
+        type=str,
+        default=None,
+        help="Strategy name for ledger grouping (passthrough, engine ignores it)",
+    )
 
     args = parser.parse_args()
 
@@ -235,9 +245,9 @@ def main() -> None:
     try:
         if args.input_format is not None:
             adapter = ADAPTERS[args.input_format]
-            trades, passthrough = adapter(args.csv_path)
+            trades, passthrough, canonical_sha256 = adapter(args.csv_path)
         else:
-            trades, passthrough = load_trades(args.csv_path)
+            trades, passthrough, canonical_sha256 = load_trades(args.csv_path)
     except (FileNotFoundError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
@@ -258,6 +268,7 @@ def main() -> None:
             "input": {
                 "path": args.csv_path,
                 "sha256": file_hash,
+                "canonical_sha256": canonical_sha256,
                 "n_trades": len(trades),
             },
             "declared": {
@@ -268,6 +279,7 @@ def main() -> None:
             "dataset": {
                 "symbol": passthrough["symbol"],
                 "timeframe": passthrough["timeframe"],
+                "strategy": args.strategy,
                 "date_range": date_range,
             },
             "verdict": worst_verdict(run_result.results).value,
@@ -284,6 +296,7 @@ def main() -> None:
             trials_was_default,
             passthrough=passthrough,
             date_range=date_range,
+            strategy=args.strategy,
         )
 
     raise SystemExit(0 if worst_verdict(run_result.results) == Verdict.pass_ else 1)

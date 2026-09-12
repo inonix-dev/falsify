@@ -33,14 +33,20 @@ maps `Profit` → `pnl`, and extracts `symbol`/`timeframe` automatically.
 If you already have a 4-column CSV (`entry_time,exit_time,pnl,side`):
 
 ```bash
-# A backtest that looks too good to be true (12 parameters, 42 trades)
-falsify check examples/known_overfit.csv --params 12
-# → FAIL — param_overfit_ratio below the 10:1 floor
-
-# A backtest that holds up (2 parameters, 200 trades)
-falsify check examples/known_good.csv --params 2
-# → PASS on all three checks
+falsify check trades.csv --params 3
 ```
+
+Sample CSVs live in the repo, not in the installed package — grab one to try
+the checks without a backtest of your own:
+
+```bash
+curl -O https://raw.githubusercontent.com/kire21b/falsify/main/examples/known_overfit.csv
+falsify check known_overfit.csv --params 12
+# → FAIL — param_overfit_ratio below the 10:1 floor
+```
+
+`examples/known_good.csv` is the counterpart that passes all three checks
+(2 parameters, 200 trades).
 
 ## Checks
 
@@ -67,6 +73,12 @@ Append results over time to build a history:
 falsify check trades.csv --params 8 --json >> runs.jsonl
 ```
 
+With a strategy name for ledger grouping:
+
+```bash
+falsify check trades.csv --params 8 --strategy ema-cross --json >> runs.jsonl
+```
+
 Migration from v1: v1's `--json` had no `schema_version` and a top-level
 `n_trades`. v2 nests it under `input`. Records without `schema_version`
 are v1 (flat shape) — readers should branch on its presence.
@@ -79,12 +91,14 @@ Schema (version 1):
 | `engine_version` | Engine version (`falsify --version`) |
 | `input.path` | CSV path as provided |
 | `input.sha256` | SHA-256 of the raw CSV file |
+| `input.canonical_sha256` | SHA-256 of normalized trade content (sorted, consistent float format) |
 | `input.n_trades` | Number of trades |
 | `declared.params` | Free parameters (user-provided) |
 | `declared.trials` | Strategy variants tried (user-provided) |
 | `declared.trials_was_default` | Whether `--trials` was left at default |
-| `dataset.symbol` | Passthrough: symbol if present in CSV, else `null` |
-| `dataset.timeframe` | Passthrough: timeframe if present in CSV, else `null` |
+| `dataset.symbol` | Passthrough: symbol if present, `null` if absent, `"<multiple>"` if ambiguous |
+| `dataset.timeframe` | Passthrough: timeframe if present, `null` if absent, `"<multiple>"` if ambiguous |
+| `dataset.strategy` | Strategy name (passthrough, engine ignores it, `null` if not provided) |
 | `dataset.date_range` | `{first_entry, last_exit}` computed from trade timestamps |
 | `verdict` | Overall: `pass`, `warn`, or `fail` |
 | `checks[]` | Per-check results with name, verdict, value, threshold, explanation, and inputs |
@@ -99,6 +113,7 @@ Example:
   "input": {
     "path": "examples/known_good.csv",
     "sha256": "a1b2c3...",
+    "canonical_sha256": "552af7e9b7ae20154f8dd70c34aa049c8fd51830d2e3785659f1e814900ca651",
     "n_trades": 200
   },
   "declared": {
@@ -109,6 +124,7 @@ Example:
   "dataset": {
     "symbol": null,
     "timeframe": null,
+    "strategy": "ema-cross",
     "date_range": {
       "first_entry": "2024-01-01T09:00:00+00:00",
       "last_exit": "2024-06-28T16:00:00+00:00"

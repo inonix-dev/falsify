@@ -23,8 +23,8 @@ class TestRoundTrip:
         tv_path = FIXTURES / "tradingview_raw.csv"
         canon_path = FIXTURES / "tradingview_canonical.csv"
 
-        df, passthrough = from_tradingview(tv_path)
-        expected, _ = load_trades(canon_path)  # parsed the same way as the adapter
+        df, passthrough, _ = from_tradingview(tv_path)
+        expected, _, _ = load_trades(canon_path)  # parsed the same way as the adapter
 
         assert list(df.columns) == ["entry_time", "exit_time", "pnl", "side"]
         assert len(df) == len(expected)
@@ -38,12 +38,12 @@ class TestRoundTrip:
 
     def test_passthrough_none_when_columns_absent(self):
         tv_path = FIXTURES / "tradingview_raw.csv"
-        _, passthrough = from_tradingview(tv_path)
+        _, passthrough, _ = from_tradingview(tv_path)
         assert passthrough == {"symbol": None, "timeframe": None}
 
     def test_trade_count(self):
         tv_path = FIXTURES / "tradingview_raw.csv"
-        df, _ = from_tradingview(tv_path)
+        df, _, _ = from_tradingview(tv_path)
         assert len(df) == 10
 
 
@@ -55,14 +55,14 @@ class TestPassthrough:
 
     def test_symbol_and_timeframe_extracted(self):
         tv_path = FIXTURES / "tradingview_with_symbol.csv"
-        df, passthrough = from_tradingview(tv_path)
+        df, passthrough, _ = from_tradingview(tv_path)
         assert passthrough["symbol"] == "BTCUSD"
         assert passthrough["timeframe"] == "60"
         assert len(df) == 2
 
     def test_canonical_cols_only(self):
         tv_path = FIXTURES / "tradingview_with_symbol.csv"
-        df, _ = from_tradingview(tv_path)
+        df, _, _ = from_tradingview(tv_path)
         assert list(df.columns) == ["entry_time", "exit_time", "pnl", "side"]
 
 

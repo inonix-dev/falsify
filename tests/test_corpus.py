@@ -45,7 +45,7 @@ EXPECTED_ROWS = {
 
 def _run(case: dict) -> str:
     path = (CORPUS_DIR / case["file"]).resolve()
-    trades, _ = load_trades(path)
+    trades, _, _ = load_trades(path)
     assert len(trades) == EXPECTED_ROWS[case["file"]], (
         f"{case['file']}: {len(trades)} rows, expected "
         f"{EXPECTED_ROWS[case['file']]} — regenerate via generate.py?"
@@ -119,7 +119,7 @@ def test_hidden_trials_dishonesty_delta():
     """
     case = next(c for c in CASES if c["file"] == "bad_hidden_trials.csv")
     path = (CORPUS_DIR / case["file"]).resolve()
-    trades, _ = load_trades(path)
+    trades, _, _ = load_trades(path)
     default = worst_verdict(run_checks(trades, case["params"], 1).results).value
     honest = worst_verdict(run_checks(trades, case["params"], 200).results).value
     assert (default, honest) == ("pass", "fail"), (

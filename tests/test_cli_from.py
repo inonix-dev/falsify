@@ -1,4 +1,4 @@
-"""CLI integration tests for --from flag and dataset passthrough."""
+"""CLI integration tests for --from flag, dataset passthrough, and v2.6 features."""
 
 from __future__ import annotations
 
@@ -78,3 +78,75 @@ class TestFromTradingView:
         _, out, err = _run_cli("check", tv, "--from", "tradingview", "--params", "2")
         combined = out + err
         assert "trade #2" in combined.lower() or "row" in combined.lower()
+
+
+# ── v2.6: --strategy passthrough ──
+
+
+class TestStrategyPassthrough:
+    """--strategy is a pure passthrough — engine ignores it."""
+
+    def test_strategy_in_json_output(self):
+        tv = str(FIXTURES / "tradingview_raw.csv")
+        code, out, _ = _run_cli(
+            "check", tv, "--from", "tradingview", "--params", "2",
+            "--strategy", "ema-cross", "--json",
+        )
+        rec = json.loads(out)
+        assert rec["dataset"]["strategy"] == "ema-cross"
+
+    def test_strategy_none_when_omitted(self):
+        tv = str(FIXTURES / "tradingview_raw.csv")
+        code, out, _ = _run_cli(
+            "check", tv, "--from", "tradingview", "--params", "2", "--json",
+        )
+        rec = json.loads(out)
+        assert rec["dataset"]["strategy"] is None
+
+    def test_strategy_in_human_output(self):
+        tv = str(FIXTURES / "tradingview_raw.csv")
+        code, out, _ = _run_cli(
+            "check", tv, "--from", "tradingview", "--params", "2",
+            "--strategy", "ema-cross",
+        )
+        assert "strategy=ema-cross" in out
+
+
+# ── v2.6: canonical_sha256 in JSON ──
+
+
+class TestCanonicalSha256InJson:
+    """input.canonical_sha256 must be present and differ from input.sha256."""
+
+    def test_canonical_sha256_present(self):
+        csv = str(FIXTURES / "tradingview_canonical.csv")
+        code, out, _ = _run_cli("check", csv, "--params", "2", "--json")
+        rec = json.loads(out)
+        assert "canonical_sha256" in rec["input"]
+        assert len(rec["input"]["canonical_sha256"]) == 64  # SHA-256 hex
+
+    def test_canonical_sha256_differs_from_file_sha256(self):
+        """File hash and canonical hash answer different questions."""
+        csv = str(FIXTURES / "tradingview_canonical.csv")
+        code, out, _ = _run_cli("check", csv, "--params", "2", "--json")
+        rec = json.loads(out)
+        assert rec["input"]["sha256"] != rec["input"]["canonical_sha256"]
+
+    def test_canonical_sha256_deterministic(self):
+        """Same CSV → same canonical_sha256 across runs."""
+        csv = str(FIXTURES / "tradingview_canonical.csv")
+        _, out1, _ = _run_cli("check", csv, "--params", "2", "--json")
+        _, out2, _ = _run_cli("check", csv, "--params", "2", "--json")
+        r1 = json.loads(out1)
+        r2 = json.loads(out2)
+        assert r1["input"]["canonical_sha256"] == r2["input"]["canonical_sha256"]
+
+    def test_canonical_sha256_present_in_adapter_path(self):
+        """canonical_sha256 must also appear when using --from."""
+        tv = str(FIXTURES / "tradingview_raw.csv")
+        code, out, _ = _run_cli(
+            "check", tv, "--from", "tradingview", "--params", "2", "--json",
+        )
+        rec = json.loads(out)
+        assert "canonical_sha256" in rec["input"]
+        assert len(rec["input"]["canonical_sha256"]) == 64
