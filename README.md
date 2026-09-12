@@ -17,10 +17,22 @@ pip install falsify-backtest
 
 ## Quick start
 
-```bash
-# Check version
-falsify --version
+### TradingView (most common)
 
+Export your strategy's "List of Trades" from TradingView, then:
+
+```bash
+falsify check ~/Downloads/BTCUSD_Strategy_Trades.csv --from tradingview --params 6
+```
+
+No manual CSV conversion needed. The adapter pairs Entry/Exit rows,
+maps `Profit` → `pnl`, and extracts `symbol`/`timeframe` automatically.
+
+### Canonical CSV
+
+If you already have a 4-column CSV (`entry_time,exit_time,pnl,side`):
+
+```bash
 # A backtest that looks too good to be true (12 parameters, 42 trades)
 falsify check examples/known_overfit.csv --params 12
 # → FAIL — param_overfit_ratio below the 10:1 floor
@@ -71,6 +83,9 @@ Schema (version 1):
 | `declared.params` | Free parameters (user-provided) |
 | `declared.trials` | Strategy variants tried (user-provided) |
 | `declared.trials_was_default` | Whether `--trials` was left at default |
+| `dataset.symbol` | Passthrough: symbol if present in CSV, else `null` |
+| `dataset.timeframe` | Passthrough: timeframe if present in CSV, else `null` |
+| `dataset.date_range` | `{first_entry, last_exit}` computed from trade timestamps |
 | `verdict` | Overall: `pass`, `warn`, or `fail` |
 | `checks[]` | Per-check results with name, verdict, value, threshold, explanation, and inputs |
 | `created_at` | UTC timestamp (ISO-8601) |
@@ -90,6 +105,14 @@ Example:
     "params": 2,
     "trials": 1,
     "trials_was_default": true
+  },
+  "dataset": {
+    "symbol": null,
+    "timeframe": null,
+    "date_range": {
+      "first_entry": "2024-01-01T09:00:00+00:00",
+      "last_exit": "2024-06-28T16:00:00+00:00"
+    }
   },
   "verdict": "pass",
   "checks": [
