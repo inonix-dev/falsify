@@ -19,3 +19,4 @@ fapony.config.json
 .claude/
 .mcp.json
 opencode.jsonc
+.pypirc
