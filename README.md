@@ -67,6 +67,12 @@ Append results over time to build a history:
 falsify check trades.csv --params 8 --json >> runs.jsonl
 ```
 
+With a strategy name for ledger grouping:
+
+```bash
+falsify check trades.csv --params 8 --strategy ema-cross --json >> runs.jsonl
+```
+
 Migration from v1: v1's `--json` had no `schema_version` and a top-level
 `n_trades`. v2 nests it under `input`. Records without `schema_version`
 are v1 (flat shape) — readers should branch on its presence.
@@ -79,12 +85,14 @@ Schema (version 1):
 | `engine_version` | Engine version (`falsify --version`) |
 | `input.path` | CSV path as provided |
 | `input.sha256` | SHA-256 of the raw CSV file |
+| `input.canonical_sha256` | SHA-256 of normalized trade content (sorted, consistent float format) |
 | `input.n_trades` | Number of trades |
 | `declared.params` | Free parameters (user-provided) |
 | `declared.trials` | Strategy variants tried (user-provided) |
 | `declared.trials_was_default` | Whether `--trials` was left at default |
-| `dataset.symbol` | Passthrough: symbol if present in CSV, else `null` |
-| `dataset.timeframe` | Passthrough: timeframe if present in CSV, else `null` |
+| `dataset.symbol` | Passthrough: symbol if present, `null` if absent, `"<multiple>"` if ambiguous |
+| `dataset.timeframe` | Passthrough: timeframe if present, `null` if absent, `"<multiple>"` if ambiguous |
+| `dataset.strategy` | Strategy name (passthrough, engine ignores it, `null` if not provided) |
 | `dataset.date_range` | `{first_entry, last_exit}` computed from trade timestamps |
 | `verdict` | Overall: `pass`, `warn`, or `fail` |
 | `checks[]` | Per-check results with name, verdict, value, threshold, explanation, and inputs |
@@ -99,6 +107,7 @@ Example:
   "input": {
     "path": "examples/known_good.csv",
     "sha256": "a1b2c3...",
+    "canonical_sha256": "552af7e9b7ae20154f8dd70c34aa049c8fd51830d2e3785659f1e814900ca651",
     "n_trades": 200
   },
   "declared": {
@@ -109,6 +118,7 @@ Example:
   "dataset": {
     "symbol": null,
     "timeframe": null,
+    "strategy": "ema-cross",
     "date_range": {
       "first_entry": "2024-01-01T09:00:00+00:00",
       "last_exit": "2024-06-28T16:00:00+00:00"
