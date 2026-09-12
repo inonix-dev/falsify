@@ -33,14 +33,20 @@ maps `Profit` → `pnl`, and extracts `symbol`/`timeframe` automatically.
 If you already have a 4-column CSV (`entry_time,exit_time,pnl,side`):
 
 ```bash
-# A backtest that looks too good to be true (12 parameters, 42 trades)
-falsify check examples/known_overfit.csv --params 12
-# → FAIL — param_overfit_ratio below the 10:1 floor
-
-# A backtest that holds up (2 parameters, 200 trades)
-falsify check examples/known_good.csv --params 2
-# → PASS on all three checks
+falsify check trades.csv --params 3
 ```
+
+Sample CSVs live in the repo, not in the installed package — grab one to try
+the checks without a backtest of your own:
+
+```bash
+curl -O https://raw.githubusercontent.com/kire21b/falsify/main/examples/known_overfit.csv
+falsify check known_overfit.csv --params 12
+# → FAIL — param_overfit_ratio below the 10:1 floor
+```
+
+`examples/known_good.csv` is the counterpart that passes all three checks
+(2 parameters, 200 trades).
 
 ## Checks
 
