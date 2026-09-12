@@ -22,6 +22,7 @@ from falsify.checks import (
     sample_size,
     worst_verdict,
 )
+from falsify.adapters import ADAPTERS
 from falsify.io import load_trades
 
 
@@ -135,11 +136,28 @@ def _print_human_report(
     n_params: int,
     n_trials: int,
     trials_was_default: bool,
+    passthrough: dict[str, str | None] | None = None,
+    date_range: dict[str, str] | None = None,
 ) -> None:
     overall = worst_verdict(results)
     overall_label = overall.value.upper()
     print(f"\n  FALSIFY CHECK — {overall_label}")
-    print(f"  trades={n_trades}  params={n_params}  trials={n_trials}\n")
+    print(f"  trades={n_trades}  params={n_params}  trials={n_trials}")
+
+    if passthrough and any(passthrough.values()):
+        parts = []
+        if passthrough.get("symbol"):
+            parts.append(f"symbol={passthrough['symbol']}")
+        if passthrough.get("timeframe"):
+            parts.append(f"timeframe={passthrough['timeframe']}")
+        print(f"  {'  '.join(parts)}")
+
+    if date_range:
+        print(
+            f"  date_range={date_range['first_entry']} → {date_range['last_exit']}"
+        )
+
+    print()
 
     for r in results:
         label = r.verdict.value.upper()
@@ -193,6 +211,13 @@ def main() -> None:
         help="Number of strategy variants tried before this one (default: 1)",
     )
     check.add_argument(
+        "--from",
+        dest="input_format",
+        choices=["tradingview"],
+        default=None,
+        help="Input format adapter (e.g. 'tradingview'). Omit for canonical CSV.",
+    )
+    check.add_argument(
         "--json",
         action="store_true",
         help="Output machine-readable JSON instead of the human report",
@@ -208,12 +233,23 @@ def main() -> None:
     trials_was_default = args.trials == 1
 
     try:
-        trades = load_trades(args.csv_path)
+        passthrough: dict[str, str | None] = {"symbol": None, "timeframe": None}
+        if args.input_format is not None:
+            adapter = ADAPTERS[args.input_format]
+            trades, passthrough = adapter(args.csv_path)
+        else:
+            trades = load_trades(args.csv_path)
     except (FileNotFoundError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
 
     run_result = run_checks(trades, args.params, args.trials)
+
+    # ── dataset block (date_range from actual data) ──
+    date_range = {
+        "first_entry": str(trades["entry_time"].min()),
+        "last_exit": str(trades["exit_time"].max()),
+    }
 
     if args.json:
         file_hash = _sha256_file(args.csv_path)
@@ -230,6 +266,11 @@ def main() -> None:
                 "trials": args.trials,
                 "trials_was_default": trials_was_default,
             },
+            "dataset": {
+                "symbol": passthrough["symbol"],
+                "timeframe": passthrough["timeframe"],
+                "date_range": date_range,
+            },
             "verdict": worst_verdict(run_result.results).value,
             "checks": [_result_to_dict(r) for r in run_result.results],
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -237,7 +278,13 @@ def main() -> None:
         print(json.dumps(output, indent=2 if sys.stdout.isatty() else None))
     else:
         _print_human_report(
-            run_result.results, len(trades), args.params, args.trials, trials_was_default
+            run_result.results,
+            len(trades),
+            args.params,
+            args.trials,
+            trials_was_default,
+            passthrough=passthrough,
+            date_range=date_range,
         )
 
     raise SystemExit(0 if worst_verdict(run_result.results) == Verdict.pass_ else 1)
