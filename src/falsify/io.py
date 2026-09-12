@@ -18,12 +18,30 @@ REQUIRED_COLUMNS = ("entry_time", "exit_time", "pnl", "side")
 VALID_SIDES = frozenset({"long", "short"})
 
 
-def load_trades(path: str | Path) -> pd.DataFrame:
+def extract_passthrough(
+    df: pd.DataFrame, symbol_col: str, timeframe_col: str
+) -> dict[str, str | None]:
+    """Pull an optional symbol/timeframe value out of a raw CSV DataFrame.
+
+    Never computed, never validated — just echoed if every row agrees on one
+    value. Ambiguous (multiple distinct values) or absent columns yield None.
+    """
+    passthrough: dict[str, str | None] = {"symbol": None, "timeframe": None}
+    for key, col in (("symbol", symbol_col), ("timeframe", timeframe_col)):
+        if col in df.columns:
+            val = df[col].dropna().unique()
+            passthrough[key] = str(val[0]) if len(val) == 1 else None
+    return passthrough
+
+
+def load_trades(path: str | Path) -> tuple[pd.DataFrame, dict[str, str | None]]:
     """Load and validate a trade CSV.
 
-    Returns a DataFrame with columns [entry_time, exit_time, pnl, side]
-    where entry_time/exit_time are datetime64[ns, UTC], pnl is float64,
-    and side is str.
+    Returns (df, passthrough): df has columns [entry_time, exit_time, pnl,
+    side] where entry_time/exit_time are datetime64[ns, UTC], pnl is
+    float64, side is str; passthrough is {"symbol": ... | None,
+    "timeframe": ... | None} echoed from optional `symbol`/`timeframe`
+    columns, if present and unambiguous.
 
     Raises:
         FileNotFoundError: path does not exist.
@@ -42,6 +60,8 @@ def load_trades(path: str | Path) -> pd.DataFrame:
     _validate_header(df)
     if len(df) == 0:
         raise ValueError("empty dataset")
+
+    passthrough = extract_passthrough(df, "symbol", "timeframe")
 
     out = pd.DataFrame()
     out["entry_time"] = df["entry_time"]
@@ -68,7 +88,7 @@ def load_trades(path: str | Path) -> pd.DataFrame:
             )
 
     out["pnl"] = out["pnl"].astype("float64")
-    return out
+    return out, passthrough
 
 
 def _validate_header(df: pd.DataFrame) -> None:

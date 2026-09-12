@@ -1,0 +1,5 @@
+"Trade #","Type","Signal","Date/Time","Price","Contracts","Profit","Cum. Profit","Run-up","Drawdown","Symbol","Interval"
+1,"Entry long","Script Signal","2024-01-15 09:30:00","42500.50","1","","","","","BTCUSD","60"
+1,"Exit long","Script Signal","2024-01-15 14:45:00","42800.75","1","300.25","300.25","350.00","0.00","BTCUSD","60"
+2,"Entry long","Script Signal","2024-01-16 10:00:00","42600.00","1","","","","","BTCUSD","60"
+2,"Exit long","Script Signal","2024-01-16 15:30:00","42450.25","1","-149.75","150.50","0.00","-149.75","BTCUSD","60"

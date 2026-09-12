@@ -29,7 +29,7 @@ class TestLoadTrades:
             ["2026-01-03T09:00:00Z", "2026-01-03T14:00:00Z", "120.50", "long"],
             ["2026-01-04T02:00:00Z", "2026-01-04T05:30:00Z", "-40.00", "short"],
         ])
-        df = load_trades(tmp_csv)
+        df, _ = load_trades(tmp_csv)
         assert len(df) == 2
         assert list(df.columns) == ["entry_time", "exit_time", "pnl", "side"]
         assert df["pnl"].dtype == "float64"
@@ -39,9 +39,26 @@ class TestLoadTrades:
             ["entry_time", "exit_time", "pnl", "side", "symbol", "notes"],
             ["2026-01-03T09:00:00Z", "2026-01-03T14:00:00Z", "120.50", "long", "BTCUSDT", "test"],
         ])
-        df = load_trades(tmp_csv)
+        df, _ = load_trades(tmp_csv)
         assert len(df) == 1
         assert list(df.columns) == ["entry_time", "exit_time", "pnl", "side"]
+
+    def test_symbol_and_timeframe_passthrough(self, tmp_csv: Path):
+        """Canonical CSV with symbol/timeframe columns echoes them, uncomputed."""
+        _write_csv(tmp_csv, [
+            ["entry_time", "exit_time", "pnl", "side", "symbol", "timeframe"],
+            ["2026-01-03T09:00:00Z", "2026-01-03T14:00:00Z", "120.50", "long", "BTCUSDT", "60"],
+        ])
+        _, passthrough = load_trades(tmp_csv)
+        assert passthrough == {"symbol": "BTCUSDT", "timeframe": "60"}
+
+    def test_no_symbol_column_is_null(self, tmp_csv: Path):
+        _write_csv(tmp_csv, [
+            ["entry_time", "exit_time", "pnl", "side"],
+            ["2026-01-03T09:00:00Z", "2026-01-03T14:00:00Z", "120.50", "long"],
+        ])
+        _, passthrough = load_trades(tmp_csv)
+        assert passthrough == {"symbol": None, "timeframe": None}
 
     def test_missing_column_raises(self, tmp_csv: Path):
         _write_csv(tmp_csv, [
