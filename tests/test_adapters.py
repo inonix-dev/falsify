@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from falsify.adapters import from_tradingview
+from falsify.io import load_trades
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -23,12 +24,11 @@ class TestRoundTrip:
         canon_path = FIXTURES / "tradingview_canonical.csv"
 
         df, passthrough = from_tradingview(tv_path)
-        expected = pd.read_csv(canon_path)
+        expected, _ = load_trades(canon_path)  # parsed the same way as the adapter
 
         assert list(df.columns) == ["entry_time", "exit_time", "pnl", "side"]
         assert len(df) == len(expected)
 
-        # compare values (timestamps as strings for equality)
         for col in df.columns:
             actual_vals = df[col].tolist()
             expected_vals = expected[col].tolist()

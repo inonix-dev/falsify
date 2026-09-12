@@ -233,12 +233,11 @@ def main() -> None:
     trials_was_default = args.trials == 1
 
     try:
-        passthrough: dict[str, str | None] = {"symbol": None, "timeframe": None}
         if args.input_format is not None:
             adapter = ADAPTERS[args.input_format]
             trades, passthrough = adapter(args.csv_path)
         else:
-            trades = load_trades(args.csv_path)
+            trades, passthrough = load_trades(args.csv_path)
     except (FileNotFoundError, ValueError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)

@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from falsify.io import extract_passthrough
+
 
 def from_tradingview(
     path: str | Path,
@@ -51,17 +53,7 @@ def from_tradingview(
     if len(raw) == 0:
         raise ValueError("empty dataset")
 
-    # ── detect passthrough columns ──
-    passthrough: dict[str, str | None] = {
-        "symbol": None,
-        "timeframe": None,
-    }
-    if "Symbol" in raw.columns:
-        val = raw["Symbol"].dropna().unique()
-        passthrough["symbol"] = str(val[0]) if len(val) == 1 else None
-    if "Interval" in raw.columns:
-        val = raw["Interval"].dropna().unique()
-        passthrough["timeframe"] = str(val[0]) if len(val) == 1 else None
+    passthrough = extract_passthrough(raw, "Symbol", "Interval")
 
     # ── pair rows by Trade # ──
     trades: list[dict] = []
@@ -127,8 +119,8 @@ def from_tradingview(
 
         trades.append(
             {
-                "entry_time": entry_row["Date/Time"],
-                "exit_time": exit_row["Date/Time"],
+                "entry_time": entry_ts,
+                "exit_time": exit_ts,
                 "pnl": pnl,
                 "side": entry_side,
             }
