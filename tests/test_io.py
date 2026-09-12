@@ -247,3 +247,33 @@ class TestMultipleSentinel:
         ])
         _, passthrough, _ = load_trades(tmp_csv)
         assert passthrough["symbol"] == "BTC"
+
+
+def test_canonical_hash_stable_when_entry_times_tie():
+    """Simultaneous entries must not let file row order leak into the hash.
+
+    entry_time alone is not a unique key — a multi-symbol or scalping
+    backtest opens several trades on the same bar. Sorting on entry_time
+    only is stable, so the raw row order survived into the digest and a
+    re-export with a different order looked like a new trial to the ledger.
+    """
+    import csv
+    import tempfile
+    from pathlib import Path
+
+    rows = [
+        {"entry_time": "2024-01-01T09:00:00Z", "exit_time": "2024-01-01T10:00:00Z",
+         "pnl": "1", "side": "long"},
+        {"entry_time": "2024-01-01T09:00:00Z", "exit_time": "2024-01-01T11:00:00Z",
+         "pnl": "2", "side": "short"},
+    ] * 20
+
+    def digest(ordered):
+        tmp = Path(tempfile.mkdtemp()) / "t.csv"
+        with tmp.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=list(ordered[0]))
+            w.writeheader()
+            w.writerows(ordered)
+        return load_trades(tmp)[2]
+
+    assert digest(rows) == digest(rows[::-1])

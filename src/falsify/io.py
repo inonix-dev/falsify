@@ -27,7 +27,10 @@ def _canonical_digest(df: pd.DataFrame) -> str:
     """Compute a content-addressable SHA-256 of normalized trade data.
 
     Normalization rules (any deviation changes the hash — pin a test):
-      1. Rows sorted by entry_time ascending.
+      1. Rows sorted by (entry_time, exit_time, pnl, side) ascending —
+         all four, because entry_time alone is not unique: simultaneous
+         entries (same bar, multi-symbol or scalping) would otherwise let
+         raw file row order leak into the hash.
       2. Timestamps rendered via pandas isoformat (UTC, tz-aware).
       3. pnl rendered with ``:.10g`` (platform-invariant, no trailing zeros).
       4. side lowercased and stripped.
@@ -40,8 +43,11 @@ def _canonical_digest(df: pd.DataFrame) -> str:
     if len(df) == 0:
         return hashlib.sha256(b"").hexdigest()
 
-    # 1. Sort by entry_time — makes hash independent of CSV row order.
-    sorted_df = df.sort_values("entry_time").reset_index(drop=True)
+    # 1. Total order over every field — makes the hash independent of CSV
+    #    row order even when several trades open on the same timestamp.
+    sorted_df = df.sort_values(
+        ["entry_time", "exit_time", "pnl", "side"], kind="mergesort"
+    ).reset_index(drop=True)
 
     lines: list[str] = []
     for _, row in sorted_df.iterrows():
