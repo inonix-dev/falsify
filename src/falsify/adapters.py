@@ -17,12 +17,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from falsify.io import extract_passthrough
+from falsify.io import extract_passthrough, _canonical_digest
 
 
 def from_tradingview(
     path: str | Path,
-) -> tuple[pd.DataFrame, dict[str, str | None]]:
+) -> tuple[pd.DataFrame, dict[str, str | None], str]:
     """Convert a TradingView 'List of Trades' export to canonical shape.
 
     TradingView pairs trades as 2 rows each:
@@ -31,8 +31,10 @@ def from_tradingview(
       - "Profit" only on Exit row
 
     Returns:
-        (df, passthrough) where df has columns [entry_time, exit_time, pnl, side]
-        and passthrough is {"symbol": ... | None, "timeframe": ... | None}.
+        (df, passthrough, canonical_sha256) where df has columns
+        [entry_time, exit_time, pnl, side], passthrough is
+        {"symbol": ... | None, "timeframe": ... | None}, and
+        canonical_sha256 is the SHA-256 of normalized trade content.
 
     Raises:
         ValueError: orphan rows, mismatched pairs, missing columns, or
@@ -129,7 +131,9 @@ def from_tradingview(
     if not trades:
         raise ValueError("empty dataset")
 
-    return pd.DataFrame(trades), passthrough
+    result_df = pd.DataFrame(trades)
+    canonical_hash = _canonical_digest(result_df)
+    return result_df, passthrough, canonical_hash
 
 
 def _validate_tv_header(df: pd.DataFrame) -> None:

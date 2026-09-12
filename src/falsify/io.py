@@ -10,12 +10,51 @@ number (1-indexed, header is row 1, first data row is row 2).
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pandas as pd
 
 REQUIRED_COLUMNS = ("entry_time", "exit_time", "pnl", "side")
 VALID_SIDES = frozenset({"long", "short"})
+
+# Sentinel for ambiguous passthrough values (e.g. portfolio with multiple symbols).
+# Distinguishes "column exists but has conflicting values" from "column absent" (None).
+MULTIPLE_SENTINEL = "<multiple>"
+
+
+def _canonical_digest(df: pd.DataFrame) -> str:
+    """Compute a content-addressable SHA-256 of normalized trade data.
+
+    Normalization rules (any deviation changes the hash — pin a test):
+      1. Rows sorted by entry_time ascending.
+      2. Timestamps rendered via pandas isoformat (UTC, tz-aware).
+      3. pnl rendered with ``:.10g`` (platform-invariant, no trailing zeros).
+      4. side lowercased and stripped.
+      5. One row per line, no trailing newline, UTF-8 encoding.
+
+    The raw file hash (``input.sha256``) lives at ``input.sha256`` and is
+    *not* replaced by this — they answer different questions: "which exact
+    bytes did I receive" vs "which trades does this represent".
+    """
+    if len(df) == 0:
+        return hashlib.sha256(b"").hexdigest()
+
+    # 1. Sort by entry_time — makes hash independent of CSV row order.
+    sorted_df = df.sort_values("entry_time").reset_index(drop=True)
+
+    lines: list[str] = []
+    for _, row in sorted_df.iterrows():
+        entry = pd.to_datetime(row["entry_time"], utc=True)
+        exit_ = pd.to_datetime(row["exit_time"], utc=True)
+        pnl = float(row["pnl"])
+        side = str(row["side"]).strip().lower()
+        lines.append(
+            f"{entry.isoformat()},{exit_.isoformat()},{pnl:.10g},{side}"
+        )
+
+    canonical = "\n".join(lines)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def extract_passthrough(
@@ -24,24 +63,39 @@ def extract_passthrough(
     """Pull an optional symbol/timeframe value out of a raw CSV DataFrame.
 
     Never computed, never validated — just echoed if every row agrees on one
-    value. Ambiguous (multiple distinct values) or absent columns yield None.
+    value. Returns:
+      - the value as a string if all non-null rows agree,
+      - ``MULTIPLE_SENTINEL`` (``"<multiple>"``) if the column exists but
+        rows disagree — this distinguishes ambiguity from absence,
+      - ``None`` if the column is absent entirely.
     """
     passthrough: dict[str, str | None] = {"symbol": None, "timeframe": None}
     for key, col in (("symbol", symbol_col), ("timeframe", timeframe_col)):
         if col in df.columns:
             val = df[col].dropna().unique()
-            passthrough[key] = str(val[0]) if len(val) == 1 else None
+            if len(val) == 1:
+                passthrough[key] = str(val[0])
+            elif len(val) > 1:
+                passthrough[key] = MULTIPLE_SENTINEL
+            # len == 0: all-null column stays None
     return passthrough
 
 
-def load_trades(path: str | Path) -> tuple[pd.DataFrame, dict[str, str | None]]:
+def load_trades(
+    path: str | Path,
+) -> tuple[pd.DataFrame, dict[str, str | None], str]:
     """Load and validate a trade CSV.
 
-    Returns (df, passthrough): df has columns [entry_time, exit_time, pnl,
-    side] where entry_time/exit_time are datetime64[ns, UTC], pnl is
-    float64, side is str; passthrough is {"symbol": ... | None,
-    "timeframe": ... | None} echoed from optional `symbol`/`timeframe`
-    columns, if present and unambiguous.
+    Returns (df, passthrough, canonical_sha256):
+      - df has columns [entry_time, exit_time, pnl, side] where
+        entry_time/exit_time are datetime64[ns, UTC], pnl is float64,
+        side is str;
+      - passthrough is {"symbol": ... | None, "timeframe": ... | None}
+        echoed from optional `symbol`/`timeframe` columns, if present
+        and unambiguous;
+      - canonical_sha256 is a SHA-256 hex digest of the normalized
+        trade content (sorted by entry_time, consistent float format,
+        lowercase side).
 
     Raises:
         FileNotFoundError: path does not exist.
@@ -88,7 +142,8 @@ def load_trades(path: str | Path) -> tuple[pd.DataFrame, dict[str, str | None]]:
             )
 
     out["pnl"] = out["pnl"].astype("float64")
-    return out, passthrough
+    canonical_hash = _canonical_digest(out)
+    return out, passthrough, canonical_hash
 
 
 def _validate_header(df: pd.DataFrame) -> None:
