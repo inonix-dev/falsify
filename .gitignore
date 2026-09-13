@@ -10,7 +10,8 @@ dist/
 *-TEMP.md
 wt-*/
 
-.fapony/
+**/.fapony/*
+!**/.fapony/evidence.json
 fapony.config.json
 
 # Added by code-review-graph
