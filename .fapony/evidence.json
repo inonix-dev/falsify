@@ -1,0 +1,5 @@
+{
+  "commands": [
+    { "name": "test", "cmd": "pytest -q", "timeout_ms": 60000 }
+  ]
+}
