@@ -212,6 +212,40 @@ class TestCanonicalDigest:
 
         assert hash_upper == hash_lower
 
+    def test_reexport_formatting_same_canonical_different_bytes(
+        self, tmp_path: Path
+    ):
+        """Re-export with shuffled columns, CRLF, decimals → same canonical.
+
+        Same trades, different bytes: raw file hashes MUST differ (proving
+        the files are genuinely distinct) while canonical_sha256 stays
+        equal (proving the ledger won't double-count the trial).
+        """
+        import hashlib
+
+        file_a = tmp_path / "a.csv"
+        file_a.write_bytes(
+            "entry_time,exit_time,pnl,side\n"
+            "2026-01-03T09:00:00Z,2026-01-03T14:00:00Z,120.50,long\n"
+            "2026-01-04T02:00:00Z,2026-01-04T05:30:00Z,-40.00,short\n"
+            .encode("utf-8")
+        )
+        file_b = tmp_path / "b.csv"
+        file_b.write_bytes(
+            "side,pnl,exit_time,entry_time\r\n"
+            "short,-40.0000,2026-01-04T05:30:00Z,2026-01-04T02:00:00Z\r\n"
+            "long,120.5000,2026-01-03T14:00:00Z,2026-01-03T09:00:00Z\r\n"
+            .encode("utf-8")
+        )
+
+        raw_a = hashlib.sha256(file_a.read_bytes()).hexdigest()
+        raw_b = hashlib.sha256(file_b.read_bytes()).hexdigest()
+        assert raw_a != raw_b  # guards the test: files really differ
+
+        _, _, canonical_a = load_trades(file_a)
+        _, _, canonical_b = load_trades(file_b)
+        assert canonical_a == canonical_b
+
 
 # ── v2.6: <multiple> sentinel ──
 
