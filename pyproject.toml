@@ -13,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 falsify = "falsify.cli:main"
+falsify-agent = "falsify_agent.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
