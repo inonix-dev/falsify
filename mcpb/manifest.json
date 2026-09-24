@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.3.schema.json",
+  "manifest_version": "0.3",
+  "name": "falsify",
+  "display_name": "Falsify",
+  "version": "0.1.0",
+  "description": "Deterministic overfitting checks for backtested trading strategies — counts the trials you actually ran.",
+  "author": {
+    "name": "delamind"
+  },
+  "license": "MIT",
+  "server": {
+    "type": "python",
+    "entry_point": "falsify_agent/mcp_server.py",
+    "mcp_config": {
+      "command": "falsify-agent",
+      "args": ["mcp"]
+    }
+  },
+  "tools": [
+    {
+      "name": "check",
+      "description": "Run falsify checks on a trade CSV. strategy is required; declared trials are logged and deflated with ledger-observed trials."
+    },
+    {
+      "name": "history",
+      "description": "Past runs and declared-vs-observed trials for a strategy."
+    },
+    {
+      "name": "report",
+      "description": "HTML report path for a run (latest when omitted)."
+    }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  }
+}

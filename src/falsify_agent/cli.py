@@ -92,7 +92,21 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--json", action="store_true", help="Machine-readable output")
 
     sub.add_parser("mcp", help="Serve the MCP stdio server (needs extra [mcp])")
+
+    ins = sub.add_parser("install", help="Register falsify in an MCP client config")
+    ins.add_argument("--client", required=True,
+                     choices=["claude-desktop", "claude-code", "cursor"])
     return parser
+
+
+def cmd_install(client: str) -> int:
+    from falsify_agent import install
+    try:
+        print(install.install(client))
+    except install.ConfigError as exc:
+        print(f"falsify-agent install: {exc}", file=sys.stderr)
+        return 2
+    return 0
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -103,6 +117,8 @@ def main(argv: list[str] | None = None) -> None:
         code = cmd_status(args.strategy, args.json)
     elif args.command == "mcp":
         code = cmd_mcp()
+    elif args.command == "install":
+        code = cmd_install(args.client)
     else:  # pragma: no cover — argparse required=True guards this
         code = 2
     raise SystemExit(code)
