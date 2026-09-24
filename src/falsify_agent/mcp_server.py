@@ -68,6 +68,9 @@ def tool_check(csv_path: str, strategy: str, params: int,
         rerecord = run_engine(csv_path, strategy, params, observed, input_format)
         deflated_verdict = rerecord["verdict"]
         deflated_checks = rerecord["checks"]
+    from falsify_agent import html as _html
+    report_path = str(_html.write_report(
+        strategy, run=summary["runs"], deflated_verdict=deflated_verdict))
     return {
         "run": summary["runs"],
         "strategy": strategy,
@@ -79,7 +82,7 @@ def tool_check(csv_path: str, strategy: str, params: int,
         # Reserved for the junior guidance layer (PLAN-cloud-v0-ledger §8.5):
         # additive key, None until that chunk ships.
         "guidance": None,
-        "report_path": None,  # chunk 4 (HTML) fills this in
+        "report_path": report_path,
     }
 
 
@@ -105,8 +108,9 @@ def tool_history(strategy: str, limit: int = 20) -> dict:
 
 
 def tool_report(strategy: str, run: int | None = None) -> dict:
-    """HTML report path for a run (latest when run is None). Chunk 4 builds it."""
-    return {"path": None}
+    """HTML report path for a run (latest when run is None). Builds the file."""
+    from falsify_agent import html as _html
+    return {"path": str(_html.write_report(strategy, run=run))}
 
 
 def build_server() -> "MCPServer":

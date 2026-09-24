@@ -92,8 +92,14 @@ def test_history_unknown_strategy(home):
         tool_history("nope")
 
 
-def test_report_placeholder(home):
-    assert tool_report("ema") == {"path": None}
+def test_report_builds_html_file(home, csvs):
+    with pytest.raises(ValueError, match='ยังไม่มี run'):
+        tool_report("ema")
+    tool_check(str(csvs[0]), "ema", params=2, trials=1)
+    out = tool_report("ema")
+    assert out["path"] is not None
+    assert Path(out["path"]).exists()
+    assert "http" not in Path(out["path"]).read_text(encoding="utf-8")
 
 
 def test_server_lists_three_tools(home):

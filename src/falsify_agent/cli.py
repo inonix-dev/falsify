@@ -65,6 +65,17 @@ def cmd_status(strategy: str, as_json: bool) -> int:
     return 0
 
 
+def cmd_report(strategy: str, run: int | None) -> int:
+    from falsify_agent import html
+    try:
+        path = html.write_report(strategy, run=run)
+    except ValueError as exc:
+        print(f"falsify-agent report: {exc}", file=sys.stderr)
+        return 1
+    print(str(path))
+    return 0
+
+
 def cmd_mcp() -> int:
     try:
         from falsify_agent import mcp_server
@@ -93,6 +104,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("mcp", help="Serve the MCP stdio server (needs extra [mcp])")
 
+    rp = sub.add_parser("report", help="Build the self-contained HTML report for a run")
+    rp.add_argument("strategy", help="Strategy name (exact match)")
+    rp.add_argument("--run", type=int, default=None,
+                    help="Run number within the strategy (default: latest)")
+
     ins = sub.add_parser("install", help="Register falsify in an MCP client config")
     ins.add_argument("--client", required=True,
                      choices=["claude-desktop", "claude-code", "cursor"])
@@ -117,6 +133,8 @@ def main(argv: list[str] | None = None) -> None:
         code = cmd_status(args.strategy, args.json)
     elif args.command == "mcp":
         code = cmd_mcp()
+    elif args.command == "report":
+        code = cmd_report(args.strategy, args.run)
     elif args.command == "install":
         code = cmd_install(args.client)
     else:  # pragma: no cover — argparse required=True guards this
