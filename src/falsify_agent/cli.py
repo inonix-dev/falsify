@@ -65,6 +65,19 @@ def cmd_status(strategy: str, as_json: bool) -> int:
     return 0
 
 
+def cmd_mcp() -> int:
+    try:
+        from falsify_agent import mcp_server
+        mcp_server.main()
+    except ImportError:
+        print(
+            "falsify-agent mcp ต้องการ extra [mcp]: pip install falsify-backtest[mcp]",
+            file=sys.stderr,
+        )
+        return 2
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="falsify-agent",
@@ -77,6 +90,8 @@ def build_parser() -> argparse.ArgumentParser:
     st = sub.add_parser("status", help="Show declared vs observed trials for a strategy")
     st.add_argument("strategy", help="Strategy name (exact match)")
     st.add_argument("--json", action="store_true", help="Machine-readable output")
+
+    sub.add_parser("mcp", help="Serve the MCP stdio server (needs extra [mcp])")
     return parser
 
 
@@ -86,6 +101,8 @@ def main(argv: list[str] | None = None) -> None:
         code = cmd_log()
     elif args.command == "status":
         code = cmd_status(args.strategy, args.json)
+    elif args.command == "mcp":
+        code = cmd_mcp()
     else:  # pragma: no cover — argparse required=True guards this
         code = 2
     raise SystemExit(code)

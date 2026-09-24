@@ -11,6 +11,9 @@ dependencies = [
     "pandas>=2.0",
 ]
 
+[project.optional-dependencies]
+mcp = ["mcp>=2.2,<2.3"]
+
 [project.scripts]
 falsify = "falsify.cli:main"
 falsify-agent = "falsify_agent.cli:main"
