@@ -79,12 +79,13 @@ def test_history_newest_first(home, csvs):
     tool_check(str(b), "ema", params=2, trials=1)
     h = tool_history("ema")
     assert h["observed_trials"] == 2
-    assert [e["run"] for e in h["runs"]] == [2, 1]
-    entry = h["runs"][0]
+    assert h["runs"] == 2  # integer count, same key as status --json
+    assert [e["run"] for e in h["entries"]] == [2, 1]
+    entry = h["entries"][0]
     assert set(entry) == {"run", "created_at", "verdict",
                           "declared_trials", "canonical_sha256"}
     assert len(entry["canonical_sha256"]) == 12
-    assert tool_history("ema", limit=1)["runs"] == h["runs"][:1]
+    assert tool_history("ema", limit=1)["entries"] == h["entries"][:1]
 
 
 def test_history_unknown_strategy(home):

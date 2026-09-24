@@ -93,6 +93,17 @@ def test_corrupt_line_skipped_with_warning(home, capsys):
     assert "runs.jsonl:3" in err
 
 
+def test_malformed_but_valid_json_skipped_not_crash(home, capsys):
+    log_json(make_record())
+    rec = make_record()
+    rec["input"] = "oops"          # schema_version ok, shape wrong
+    rec["declared"] = []
+    log_json(rec)
+    assert ledger.observed_trials("ema-cross") == 1  # only the well-formed run
+    assert ledger.status("ema-cross")["runs"] == 2
+    assert ledger.status("ema-cross")["last_declared_trials"] is None
+
+
 def test_status_json_shape(home):
     log_json(make_record(sha="a", verdict="fail", trials=1,
                          created_at="2026-09-01T00:00:00+00:00"))

@@ -87,6 +87,20 @@ def test_snapshot_from_example_record(home):
     assert "<script" not in page
 
 
+def test_deflated_checks_table_rendered(home):
+    rec = engine_record()
+    deflated = [{"name": "deflated_sharpe", "verdict": "fail", "value": 0.49,
+                 "threshold": 0.95, "explanation": "SR deflated"}]
+    page = html.render(rec, "ema-cross", 1, 2, deflated_verdict="fail",
+                       history_verdicts=[rec["verdict"]],
+                       deflated_checks=deflated)
+    assert "checks (กรอก trials 1)" in page
+    assert "checks (deflate, ledger นับได้ 2)" in page
+    # the deflated failing check is present, not only the declared-trial table
+    assert page.count("deflated_sharpe") == 2
+    assert 'class="badge fail">fail' in page
+
+
 def test_no_http_in_output(home):
     rec = engine_record()
     ledger.append_record(rec)
