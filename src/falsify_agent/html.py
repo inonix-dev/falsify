@@ -42,9 +42,29 @@ def _verdict_badge(verdict) -> str:
     return f'<span class="badge {cls}">{v}</span>'
 
 
+def _checks_table(checks) -> str:
+    rows = []
+    for check in checks if isinstance(checks, list) else []:
+        if not isinstance(check, dict):
+            continue
+        rows.append(
+            "<tr><td>" + _esc(check.get("name")) + "</td>"
+            "<td>" + _verdict_badge(check.get("verdict")) + "</td>"
+            "<td>" + _esc(check.get("value")) + "</td>"
+            "<td>" + _esc(check.get("threshold")) + "</td>"
+            "<td>" + _esc(check.get("explanation")) + "</td></tr>"
+        )
+    return (
+        "<table><thead><tr><th>name</th><th>verdict</th>"
+        "<th>ค่า</th><th>เกณฑ์</th><th>คำอธิบาย (จาก engine)</th></tr></thead>"
+        f"<tbody>{''.join(rows) if rows else '<tr><td colspan=\"5\">-</td></tr>'}</tbody></table>"
+    )
+
+
 def render(record: dict, strategy: str, run: int, observed: int,
            deflated_verdict: str | None = None,
-           history_verdicts: list | None = None) -> str:
+           history_verdicts: list | None = None,
+           deflated_checks: list | None = None) -> str:
     """Render the full HTML page. Pure function (no I/O) for snapshot tests."""
     declared = record.get("declared", {}) if isinstance(record.get("declared"), dict) else {}
     verdict = record.get("verdict")
@@ -72,22 +92,15 @@ def render(record: dict, strategy: str, run: int, observed: int,
             "</div>"
         )
 
-    rows = []
-    for check in checks if isinstance(checks, list) else []:
-        if not isinstance(check, dict):
-            continue
-        rows.append(
-            "<tr><td>" + _esc(check.get("name")) + "</td>"
-            "<td>" + _verdict_badge(check.get("verdict")) + "</td>"
-            "<td>" + _esc(check.get("value")) + "</td>"
-            "<td>" + _esc(check.get("threshold")) + "</td>"
-            "<td>" + _esc(check.get("explanation")) + "</td></tr>"
+    if deflated_verdict is not None and deflated_checks is not None:
+        checks_block = (
+            f"<h2>checks (กรอก trials {_esc(declared_trials)})</h2>\n"
+            f"{_checks_table(checks)}\n"
+            f"<h2>checks (deflate, ledger นับได้ {_esc(observed)})</h2>\n"
+            f"{_checks_table(deflated_checks)}"
         )
-    checks_table = (
-        "<table><thead><tr><th>name</th><th>verdict</th>"
-        "<th>ค่า</th><th>เกณฑ์</th><th>คำอธิบาย (จาก engine)</th></tr></thead>"
-        f"<tbody>{''.join(rows) if rows else '<tr><td colspan=\"5\">-</td></tr>'}</tbody></table>"
-    )
+    else:
+        checks_block = _checks_table(checks)
 
     history = history_verdicts if history_verdicts is not None else []
     strip = []
@@ -137,7 +150,7 @@ def render(record: dict, strategy: str, run: int, observed: int,
         f"<h1>{_esc(strategy)} — run #{run}</h1>\n"
         f"{verdict_block}\n"
         f"<p>trials: กรอก {_esc(declared_trials)} · ledger นับได้ {_esc(observed)}</p>\n"
-        f"{checks_table}\n"
+        f"{checks_block}\n"
         f"{history_block}\n"
         "<footer>\n"
         f"<p>engine_version: {_esc(engine_version)}</p>\n"
@@ -149,7 +162,8 @@ def render(record: dict, strategy: str, run: int, observed: int,
 
 
 def write_report(strategy: str, run: int | None = None,
-                 deflated_verdict: str | None = None) -> Path:
+                 deflated_verdict: str | None = None,
+                 deflated_checks: list | None = None) -> Path:
     """Render one strategy run to its HTML file. Returns the path.
 
     ``run`` is the 1-based index within the strategy (``None`` = latest).
@@ -166,7 +180,7 @@ def write_report(strategy: str, run: int | None = None,
     assert summary is not None  # runs non-empty
     history_verdicts = [r.get("verdict") for r in runs]
     page = render(record, strategy, number, summary["observed_trials"],
-                  deflated_verdict, history_verdicts)
+                  deflated_verdict, history_verdicts, deflated_checks)
     path = report_path(strategy, number)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(page, encoding="utf-8")

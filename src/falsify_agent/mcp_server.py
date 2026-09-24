@@ -70,7 +70,8 @@ def tool_check(csv_path: str, strategy: str, params: int,
         deflated_checks = rerecord["checks"]
     from falsify_agent import html as _html
     report_path = str(_html.write_report(
-        strategy, run=summary["runs"], deflated_verdict=deflated_verdict))
+        strategy, run=summary["runs"], deflated_verdict=deflated_verdict,
+        deflated_checks=deflated_checks))
     return {
         "run": summary["runs"],
         "strategy": strategy,
@@ -87,7 +88,11 @@ def tool_check(csv_path: str, strategy: str, params: int,
 
 
 def tool_history(strategy: str, limit: int = 20) -> dict:
-    """Ledger summary + newest-first run list for one strategy."""
+    """Ledger summary + newest-first run list (``entries``) for one strategy.
+
+    ``runs`` stays the integer count from the summary, matching ``status --json``.
+    """
+
     summary = ledger.status(strategy)
     if summary is None:
         raise ValueError(f'ยังไม่มี run ของ "{strategy}"')
@@ -104,7 +109,7 @@ def tool_history(strategy: str, limit: int = 20) -> dict:
             "declared_trials": record.get("declared", {}).get("trials"),
             "canonical_sha256": sha[:12] if isinstance(sha, str) else None,
         })
-    return {**summary, "runs": entries}
+    return {**summary, "entries": entries}
 
 
 def tool_report(strategy: str, run: int | None = None) -> dict:

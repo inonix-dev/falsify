@@ -84,7 +84,8 @@ def observed_trials(strategy: str, path: Path | None = None) -> int:
     """Distinct ``input.canonical_sha256`` values under one strategy name."""
     seen: set[str] = set()
     for record in strategy_runs(strategy, path):
-        sha = record.get("input", {}).get("canonical_sha256")
+        inputs = record.get("input")
+        sha = inputs.get("canonical_sha256") if isinstance(inputs, dict) else None
         if isinstance(sha, str) and sha:
             seen.add(sha)
     return len(seen)
@@ -101,7 +102,9 @@ def status(strategy: str, path: Path | None = None) -> dict | None:
         if verdict in verdicts:
             verdicts[verdict] += 1
     last = runs[-1]
-    declared = last.get("declared", {})
+    declared = last.get("declared")
+    if not isinstance(declared, dict):
+        declared = {}
     return {
         "strategy": strategy,
         "runs": len(runs),
