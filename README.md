@@ -40,7 +40,7 @@ Sample CSVs live in the repo, not in the installed package — grab one to try
 the checks without a backtest of your own:
 
 ```bash
-curl -O https://raw.githubusercontent.com/kire21b/falsify/main/examples/known_overfit.csv
+curl -O https://raw.githubusercontent.com/inonix-dev/falsify/main/examples/known_overfit.csv
 falsify check known_overfit.csv --params 12
 # → FAIL — param_overfit_ratio below the 10:1 floor
 ```

@@ -18,13 +18,13 @@ config files. So the realistic risks are narrow:
 
 **Not a vulnerability:** a wrong verdict on a backtest. A check that passes a
 bad strategy is a correctness bug — please report it as a
-[false negative issue](https://github.com/kire21b/falsify/issues/new/choose),
+[false negative issue](https://github.com/inonix-dev/falsify/issues/new/choose),
 in public, where it's most useful to everyone.
 
 ## Reporting
 
 Report privately via
-[GitHub Security Advisories](https://github.com/kire21b/falsify/security/advisories/new).
+[GitHub Security Advisories](https://github.com/inonix-dev/falsify/security/advisories/new).
 Please don't open a public issue for a suspected vulnerability.
 
 Include: version (`falsify --version`), Python version, OS, a minimal input

@@ -11,4 +11,4 @@ First PyPI release.
 - Run record schema v2 and a TradingView import adapter.
 - `canonical_sha256` ledger keys, `--strategy` flag, and `<multiple>` sentinel for ambiguous ledger keys.
 
-[0.1.0]: https://github.com/kire21b/falsify/releases/tag/v0.1.0
+[0.1.0]: https://github.com/inonix-dev/falsify/releases/tag/v0.1.0
