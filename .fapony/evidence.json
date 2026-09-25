@@ -1,5 +1,5 @@
 {
   "commands": [
-    { "name": "test", "cmd": "pytest -q", "timeout_ms": 60000 }
+    { "name": "test", "cmd": ".venv/bin/python -m pytest -q", "timeout_ms": 60000 }
   ]
 }

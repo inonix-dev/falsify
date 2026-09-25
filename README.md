@@ -40,7 +40,7 @@ Sample CSVs live in the repo, not in the installed package — grab one to try
 the checks without a backtest of your own:
 
 ```bash
-curl -O https://raw.githubusercontent.com/kire21b/falsify/main/examples/known_overfit.csv
+curl -O https://raw.githubusercontent.com/inonix-dev/falsify/main/examples/known_overfit.csv
 falsify check known_overfit.csv --params 12
 # → FAIL — param_overfit_ratio below the 10:1 floor
 ```
@@ -144,6 +144,53 @@ Example:
   "created_at": "2026-09-10T12:00:00+00:00"
 }
 ```
+
+## Agent ledger (trials you actually tried)
+
+`--trials` defaults to 1, but nobody remembers how many variants they tried —
+especially when an AI edits the strategy for you. The agent-side ledger counts
+for you, in the place you already work (the chat agent). Base install, stdlib
+only, no network, no account:
+
+```bash
+falsify check trades.csv --params 3 --strategy ema-cross --json | falsify-agent log
+# → ema-cross: กรอก --trials 1 · ledger นับได้ 7
+
+falsify-agent status ema-cross
+# ema-cross — 9 runs · 2026-09-01 → 2026-09-24
+#   trials: กรอก --trials 1 · ledger นับได้ 7
+#   verdict: fail ×8 · pass ×1 (run #9, หลังลอง 7 แบบ)
+
+falsify-agent report ema-cross
+# → /Users/you/.falsify/reports/ema-cross-9.html (single file, opens offline)
+```
+
+Observed trials = distinct backtests (by content hash) under one strategy
+name, counted over the whole ledger in `~/.falsify/runs.jsonl` (override with
+`FALSIFY_HOME`). Rules that surprise people exactly once:
+
+- Re-checking the **same file** does not add a trial — correct, it is the
+  same backtest, not a new attempt.
+- Re-exporting the file (CRLF, column order) does not add a trial either —
+  only content counts (`canonical_sha256`).
+- No `--strategy` → the run is logged but counted nowhere ("ไม่รู้" beats
+  guessing).
+- Names match exactly: `Ema-Cross` and `ema-cross` are different strategies.
+
+## Claude Desktop / Code / Cursor (MCP)
+
+```bash
+pip install falsify-backtest[mcp]
+falsify-agent install --client claude-desktop   # or: claude-code | cursor
+```
+
+Three tools: `check` (strategy required — it deflates with observed trials
+automatically and shows declared vs deflated verdicts side by side),
+`history`, `report`. A chat session looks like this:
+
+> user: ช่วยแก้ strategy ให้ sharpe ดีขึ้น แล้ว check ให้หน่อย
+> agent → `check(csv=..., strategy="ema-cross", params=3, trials=1)`
+> ← `verdict: fail · กรอก trials 1 · ledger นับได้ 14 · report: ~/.falsify/reports/ema-cross-14.html`
 
 ## False-negative corpus
 

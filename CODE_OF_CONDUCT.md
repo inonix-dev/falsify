@@ -28,7 +28,7 @@ space where someone is representing this project.
 ## Enforcement
 
 Report conduct problems by opening a
-[private security advisory](https://github.com/kire21b/falsify/security/advisories/new)
+[private security advisory](https://github.com/inonix-dev/falsify/security/advisories/new)
 (it is private to the maintainers, and works for conduct reports too), or by
 contacting the maintainer through their GitHub profile.
 

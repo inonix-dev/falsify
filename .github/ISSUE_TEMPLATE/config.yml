@@ -1,10 +1,10 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/kire21b/falsify/security/advisories/new
+    url: https://github.com/inonix-dev/falsify/security/advisories/new
     about: Report privately, not as a public issue. See SECURITY.md.
   - name: New check proposal
-    url: https://github.com/kire21b/falsify/blob/main/CONTRIBUTING.md
+    url: https://github.com/inonix-dev/falsify/blob/main/CONTRIBUTING.md
     about: >
       New checks need a real case first — open a false negative report with a
       CSV the current checks get wrong.
